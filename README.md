@@ -1,4 +1,4 @@
-# Travel Korea for Medical
+# Travel DR.K
 
 Next.js 16 풀스택 앱. Vibecoding Starterkit 기반으로 시작했습니다.
 
