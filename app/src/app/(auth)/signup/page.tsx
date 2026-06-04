@@ -30,16 +30,21 @@ export default function SignupPage() {
     }
 
     setPending(true);
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signUp(parsed.data);
-    setPending(false);
+    try {
+      const supabase = createClient();
+      const { error: authError } = await supabase.auth.signUp(parsed.data);
 
-    if (authError) {
-      setError(authError.message);
-      return;
+      if (authError) {
+        setError(authError.message);
+        return;
+      }
+      setInfo('확인 이메일을 보냈습니다. 메일함을 확인하세요.');
+      setTimeout(() => router.push('/login'), 1500);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '회원가입하지 못했습니다');
+    } finally {
+      setPending(false);
     }
-    setInfo('확인 이메일을 보냈습니다. 메일함을 확인하세요.');
-    setTimeout(() => router.push('/login'), 1500);
   }
 
   return (

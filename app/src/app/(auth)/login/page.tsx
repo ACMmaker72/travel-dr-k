@@ -28,16 +28,21 @@ export default function LoginPage() {
     }
 
     setPending(true);
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword(parsed.data);
-    setPending(false);
+    try {
+      const supabase = createClient();
+      const { error: authError } = await supabase.auth.signInWithPassword(parsed.data);
 
-    if (authError) {
-      setError(authError.message);
-      return;
+      if (authError) {
+        setError(authError.message);
+        return;
+      }
+      router.push('/dashboard');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '로그인하지 못했습니다');
+    } finally {
+      setPending(false);
     }
-    router.push('/dashboard');
-    router.refresh();
   }
 
   return (
