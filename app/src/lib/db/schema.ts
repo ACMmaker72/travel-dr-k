@@ -1,23 +1,59 @@
+import { relations } from 'drizzle-orm';
 import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgEnum,
   pgTable,
   text,
   timestamp,
-  boolean,
-  jsonb,
-  index,
-  uniqueIndex,
+  uuid,
 } from 'drizzle-orm/pg-core';
-import { createId } from '@paralleldrive/cuid2';
-import { relations } from 'drizzle-orm';
 
-// Profile — mirrors Supabase auth.users via id
-export const profiles = pgTable(
-  'Profile',
+export const userRoleEnum = pgEnum('user_role', ['patient', 'doctor', 'admin']);
+export const medicalCaseStatusEnum = pgEnum('medical_case_status', [
+  'submitted',
+  'under_review',
+  'proposed',
+  'confirmed',
+  'completed',
+]);
+export const doctorSeverityEnum = pgEnum('doctor_severity', [
+  'routine',
+  'specialized',
+  'critical',
+  'ineligible',
+]);
+
+export type ItineraryDetails = {
+  dates?: {
+    arrival?: string;
+    treatment?: string;
+    departure?: string;
+  };
+  accommodation?: {
+    name?: string;
+    nights?: number;
+    notes?: string;
+  };
+  transfers?: Array<{
+    type: 'airport' | 'hospital' | 'hotel' | 'other';
+    date?: string;
+    notes?: string;
+  }>;
+  checklist?: string[];
+};
+
+export const userProfiles = pgTable(
+  'user_profiles',
   {
-    id: text('id').primaryKey(),
-    email: text('email').notNull(),
-    displayName: text('display_name'),
-    avatarUrl: text('avatar_url'),
+    id: uuid('id').primaryKey(),
+    role: userRoleEnum('role').notNull().default('patient'),
+    fullName: text('full_name').notNull(),
+    country: text('country'),
+    preferredLanguage: text('preferred_language').notNull().default('en'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -27,23 +63,26 @@ export const profiles = pgTable(
       .$onUpdateFn(() => new Date()),
   },
   (t) => ({
-    emailIdx: uniqueIndex('profile_email_idx').on(t.email),
+    roleIdx: index('user_profiles_role_idx').on(t.role),
+    countryIdx: index('user_profiles_country_idx').on(t.country),
   }),
 );
 
-export type Profile = typeof profiles.$inferSelect;
-export type NewProfile = typeof profiles.$inferInsert;
-
-// Post — example owned resource
-export const posts = pgTable(
-  'Post',
+export const medicalCases = pgTable(
+  'medical_cases',
   {
-    id: text('id').primaryKey().$defaultFn(() => createId()),
-    profileId: text('profile_id').notNull(),
-    title: text('title').notNull(),
-    content: text('content').notNull(),
-    published: boolean('published').notNull().default(false),
-    metadata: jsonb('metadata').$type<{ tags?: string[]; readingTime?: number }>(),
+    id: uuid('id').primaryKey().defaultRandom(),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => userProfiles.id, { onDelete: 'cascade' }),
+    category: text('category').notNull(),
+    symptomsDescription: text('symptoms_description').notNull(),
+    preferredVisitDate: text('preferred_visit_date'),
+    budgetRange: text('budget_range'),
+    maxStayDays: integer('max_stay_days'),
+    status: medicalCaseStatusEnum('status').notNull().default('submitted'),
+    doctorSeverity: doctorSeverityEnum('doctor_severity'),
+    doctorNotes: text('doctor_notes'),
     createdAt: timestamp('created_at', { mode: 'date', withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -53,21 +92,90 @@ export const posts = pgTable(
       .$onUpdateFn(() => new Date()),
   },
   (t) => ({
-    profileIdx: index('post_profile_idx').on(t.profileId),
-    publishedIdx: index('post_published_idx').on(t.published, t.createdAt),
+    patientIdx: index('medical_cases_patient_idx').on(t.patientId),
+    statusIdx: index('medical_cases_status_idx').on(t.status, t.createdAt),
+    categoryIdx: index('medical_cases_category_idx').on(t.category),
+    severityIdx: index('medical_cases_severity_idx').on(t.doctorSeverity),
   }),
 );
 
-export type Post = typeof posts.$inferSelect;
-export type NewPost = typeof posts.$inferInsert;
+export const caseAttachments = pgTable(
+  'case_attachments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    caseId: uuid('case_id')
+      .notNull()
+      .references(() => medicalCases.id, { onDelete: 'cascade' }),
+    fileUrl: text('file_url').notNull(),
+    fileType: text('file_type').notNull(),
+    uploadedAt: timestamp('uploaded_at', { mode: 'date', withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    caseIdx: index('case_attachments_case_idx').on(t.caseId),
+    fileTypeIdx: index('case_attachments_file_type_idx').on(t.fileType),
+  }),
+);
 
-export const profilesRelations = relations(profiles, ({ many }) => ({
-  posts: many(posts),
+export const proposals = pgTable(
+  'proposals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    caseId: uuid('case_id')
+      .notNull()
+      .references(() => medicalCases.id, { onDelete: 'cascade' }),
+    hospitalName: text('hospital_name').notNull(),
+    estimatedCost: numeric('estimated_cost', { precision: 12, scale: 2 }),
+    itineraryDetails: jsonb('itinerary_details').$type<ItineraryDetails>(),
+    adminNotes: text('admin_notes'),
+    isAccepted: boolean('is_accepted').notNull().default(false),
+    createdAt: timestamp('created_at', { mode: 'date', withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdateFn(() => new Date()),
+  },
+  (t) => ({
+    caseIdx: index('proposals_case_idx').on(t.caseId),
+    acceptedIdx: index('proposals_accepted_idx').on(t.isAccepted),
+  }),
+);
+
+export const userProfilesRelations = relations(userProfiles, ({ many }) => ({
+  medicalCases: many(medicalCases),
 }));
 
-export const postsRelations = relations(posts, ({ one }) => ({
-  author: one(profiles, {
-    fields: [posts.profileId],
-    references: [profiles.id],
+export const medicalCasesRelations = relations(medicalCases, ({ one, many }) => ({
+  patient: one(userProfiles, {
+    fields: [medicalCases.patientId],
+    references: [userProfiles.id],
+  }),
+  attachments: many(caseAttachments),
+  proposals: many(proposals),
+}));
+
+export const caseAttachmentsRelations = relations(caseAttachments, ({ one }) => ({
+  medicalCase: one(medicalCases, {
+    fields: [caseAttachments.caseId],
+    references: [medicalCases.id],
   }),
 }));
+
+export const proposalsRelations = relations(proposals, ({ one }) => ({
+  medicalCase: one(medicalCases, {
+    fields: [proposals.caseId],
+    references: [medicalCases.id],
+  }),
+}));
+
+export type UserProfile = typeof userProfiles.$inferSelect;
+export type NewUserProfile = typeof userProfiles.$inferInsert;
+export type MedicalCase = typeof medicalCases.$inferSelect;
+export type NewMedicalCase = typeof medicalCases.$inferInsert;
+export type CaseAttachment = typeof caseAttachments.$inferSelect;
+export type NewCaseAttachment = typeof caseAttachments.$inferInsert;
+export type Proposal = typeof proposals.$inferSelect;
+export type NewProposal = typeof proposals.$inferInsert;
