@@ -3,8 +3,8 @@ import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Vibecoding App",
-  description: "Next.js 16 + Supabase + Drizzle starter",
+  title: "Travel DR.K",
+  description: "Doctor-guided medical travel coordination for Korea.",
 };
 
 export default function RootLayout({
