@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { createServerClient } from '@/lib/supabase/server';
 
 export default async function AppLayout({
@@ -15,5 +17,24 @@ export default async function AppLayout({
     redirect('/login');
   }
 
-  return <div className="flex flex-1 flex-col">{children}</div>;
+  return (
+    <div className="flex flex-1 flex-col">
+      <header className="border-b">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3">
+          <Link href="/dashboard" className="font-semibold">
+            Travel DR.K
+          </Link>
+          <nav className="flex items-center gap-2">
+            <Link href="/dashboard">
+              <Button variant="ghost">대시보드</Button>
+            </Link>
+            <Link href="/profile">
+              <Button variant="ghost">프로필</Button>
+            </Link>
+          </nav>
+        </div>
+      </header>
+      {children}
+    </div>
+  );
 }
