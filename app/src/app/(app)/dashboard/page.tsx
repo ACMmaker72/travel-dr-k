@@ -154,6 +154,13 @@ export default async function DashboardPage({
                           {medicalCase.createdAt.toLocaleDateString('ko-KR')}
                         </div>
                       </div>
+                      <div className="mt-3 flex justify-end">
+                        <Link href={`/cases/${medicalCase.id}/attachments`}>
+                          <Button variant="outline" size="sm">
+                            첨부파일 관리
+                          </Button>
+                        </Link>
+                      </div>
                       <div className="mt-4 grid gap-2 sm:grid-cols-5">
                         {statusFlow.map((status, index) => (
                           <div

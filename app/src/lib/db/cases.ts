@@ -1,6 +1,6 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { db } from './index';
-import { medicalCases, proposals, userProfiles } from './schema';
+import { caseAttachments, medicalCases, proposals, userProfiles } from './schema';
 import type { MedicalCaseRequestInput } from '../validators/cases';
 import type { CaseReviewInput, ProposalInput } from '../validators/backoffice';
 
@@ -27,6 +27,61 @@ export async function listPatientMedicalCases(patientId: string) {
     .from(medicalCases)
     .where(eq(medicalCases.patientId, patientId))
     .orderBy(desc(medicalCases.createdAt));
+}
+
+export async function getPatientMedicalCase(patientId: string, caseId: string) {
+  const [medicalCase] = await db
+    .select()
+    .from(medicalCases)
+    .where(and(eq(medicalCases.id, caseId), eq(medicalCases.patientId, patientId)))
+    .limit(1);
+
+  return medicalCase ?? null;
+}
+
+export async function listCaseAttachments(patientId: string, caseId: string) {
+  const medicalCase = await getPatientMedicalCase(patientId, caseId);
+
+  if (!medicalCase) {
+    return null;
+  }
+
+  const attachments = await db
+    .select()
+    .from(caseAttachments)
+    .where(eq(caseAttachments.caseId, caseId))
+    .orderBy(desc(caseAttachments.uploadedAt));
+
+  return {
+    medicalCase,
+    attachments,
+  };
+}
+
+export async function addCaseAttachment(
+  patientId: string,
+  caseId: string,
+  values: {
+    fileUrl: string;
+    fileType: string;
+  },
+) {
+  const medicalCase = await getPatientMedicalCase(patientId, caseId);
+
+  if (!medicalCase) {
+    return null;
+  }
+
+  const [created] = await db
+    .insert(caseAttachments)
+    .values({
+      caseId,
+      fileUrl: values.fileUrl,
+      fileType: values.fileType,
+    })
+    .returning();
+
+  return created;
 }
 
 export async function listPatientCasesWithProposals(patientId: string) {
