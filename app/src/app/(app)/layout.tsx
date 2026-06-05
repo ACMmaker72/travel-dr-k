@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { ensureUserProfile } from '@/lib/db/profiles';
 import { createServerClient } from '@/lib/supabase/server';
 
 export default async function AppLayout({
@@ -16,6 +17,8 @@ export default async function AppLayout({
   if (!user) {
     redirect('/login');
   }
+  const profile = await ensureUserProfile(user);
+  const canUseBackoffice = profile?.role === 'doctor' || profile?.role === 'admin';
 
   return (
     <div className="flex flex-1 flex-col">
@@ -34,6 +37,11 @@ export default async function AppLayout({
             <Link href="/profile">
               <Button variant="ghost">프로필</Button>
             </Link>
+            {canUseBackoffice && (
+              <Link href="/admin/cases">
+                <Button variant="ghost">백오피스</Button>
+              </Link>
+            )}
           </nav>
         </div>
       </header>

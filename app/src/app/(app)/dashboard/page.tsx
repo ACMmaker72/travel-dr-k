@@ -19,7 +19,7 @@ const statusLabels = {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ case?: string }>;
+  searchParams?: Promise<{ case?: string; error?: string }>;
 }) {
   const params = await searchParams;
   const supabase = await createServerClient();
@@ -35,6 +35,11 @@ export default async function DashboardPage({
         {params?.case === 'submitted' && (
           <Alert>
             <AlertDescription>상담 신청이 접수되었습니다. 의료 검토 단계로 이동합니다.</AlertDescription>
+          </Alert>
+        )}
+        {params?.error === 'backoffice' && (
+          <Alert variant="destructive">
+            <AlertDescription>백오피스는 doctor 또는 admin 권한이 필요합니다.</AlertDescription>
           </Alert>
         )}
 
