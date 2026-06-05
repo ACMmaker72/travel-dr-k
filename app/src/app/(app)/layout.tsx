@@ -28,6 +28,9 @@ export default async function AppLayout({
             <Link href="/dashboard">
               <Button variant="ghost">대시보드</Button>
             </Link>
+            <Link href="/request">
+              <Button variant="ghost">상담 신청</Button>
+            </Link>
             <Link href="/profile">
               <Button variant="ghost">프로필</Button>
             </Link>
